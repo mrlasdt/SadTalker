@@ -1,7 +1,7 @@
-img="examples/YuiHatano.mp4"
-audio="examples/Buddhism_Domi.mp3"
-output_dir="examples/output"
-ref_video="examples/WDA_KatieHill_000.mp4"
+img="examples/Buddhism/YuiHatano.mp4"
+audio="examples/Buddhism/Buddhism_Domi.mp3"
+output_dir="examples/Buddhism/output"
+ref_video="examples/Buddhism/WDA_KatieHill_000.mp4"
 
 cmd="python3.8 inference.py --driven_audio $audio
            --source_image $img
