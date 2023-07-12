@@ -1,6 +1,6 @@
 examples/Buddhism/output
 examples/output
-
+.vscode
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
