@@ -8,6 +8,6 @@ cmd="python inference.py --driven_audio $audio
            --result_dir $output_dir 
            --still
            --preprocess full 
-           --enhancer gfpgan"
+#           --enhancer gfpgan"
 echo $cmd
 exec $cmd

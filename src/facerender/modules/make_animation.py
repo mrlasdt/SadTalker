@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from src.utils.timer import Timer
 
-PRINT_TIMER = True
+PRINT_TIMER = False
 
 
 def normalize_kp(

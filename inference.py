@@ -13,6 +13,7 @@ from src.generate_facerender_batch import get_facerender_data
 from src.utils.init_path import init_path
 from src.utils.timer import Timer
 #from src.face3d.visualize import gen_composed_video
+PRINT_TIMER = True
 
 
 def main(args):
@@ -47,7 +48,7 @@ def main(args):
     audio_to_coeff = Audio2Coeff(sadtalker_paths, device)
 
     animate_from_coeff = AnimateFromCoeff(sadtalker_paths, device)
-    with Timer("Total run"):
+    with Timer("Total run", print_=PRINT_TIMER):
         # crop image and extract 3dmm from image
         first_frame_dir = os.path.join(save_dir, "first_frame_dir")
         os.makedirs(first_frame_dir, exist_ok=True)
@@ -98,7 +99,7 @@ def main(args):
             ref_pose_coeff_path = None
 
         # audio2ceoff
-        with Timer("audio2ceoff"):
+        with Timer("audio2ceoff", print_=PRINT_TIMER):
             batch = get_data(
                 first_coeff_path,
                 audio_path,
@@ -111,7 +112,7 @@ def main(args):
             )
 
         # 3dface render
-        with Timer("3dface render"):
+        with Timer("3dface render", print_=PRINT_TIMER):
             if args.face3dvis:
                 gen_composed_video(
                     args,
@@ -123,7 +124,7 @@ def main(args):
                 )
 
         # coeff2video
-        with Timer("coeff2video"):
+        with Timer("coeff2video", print_=PRINT_TIMER):
             data = get_facerender_data(
                 coeff_path,
                 crop_pic_path,
@@ -139,7 +140,7 @@ def main(args):
                 size=args.size,
             )
 
-        with Timer("animate from coeff"):
+        with Timer("animate from coeff", print_=PRINT_TIMER):
             result = animate_from_coeff.generate(
                 data,
                 save_dir,
@@ -151,7 +152,7 @@ def main(args):
                 img_size=args.size,
             )
 
-        with Timer("shutil"):
+        with Timer("shutil", print_=PRINT_TIMER):
             shutil.move(result, save_dir + ".mp4")
             print("The generated video is named:", save_dir + ".mp4")
 
