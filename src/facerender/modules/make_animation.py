@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from src.utils.timer import Timer
 
-PRINT_TIMER = False
+PRINT_TIMER = True
 
 
 def normalize_kp(
@@ -41,10 +41,12 @@ def normalize_kp(
     return kp_new
 
 
-def headpose_pred_to_degree(pred):
-    device = pred.device
-    idx_tensor = [idx for idx in range(66)]
-    idx_tensor = torch.FloatTensor(idx_tensor).type_as(pred).to(device)
+def headpose_pred_to_degree(pred, idx_tensor):
+    # device = pred.device
+    # with Timer("idx_tensor", print_=PRINT_TIMER):
+    # idx_tensor = [idx for idx in range(66)]
+    # idx_tensor = torch.FloatTensor(idx_tensor).type_as(pred).to(device)
+    # with Timer("softmax", print_=PRINT_TIMER):
     pred = F.softmax(pred)
     degree = torch.sum(pred * idx_tensor, 1) * 3 - 99
     return degree
@@ -112,38 +114,44 @@ def get_rotation_matrix(yaw, pitch, roll):
     return rot_mat
 
 
-def keypoint_transformation(kp_canonical, he, wo_exp=False):
-    kp = kp_canonical["value"]  # (bs, k, 3)
-    yaw, pitch, roll = he["yaw"], he["pitch"], he["roll"]
-    yaw = headpose_pred_to_degree(yaw)
-    pitch = headpose_pred_to_degree(pitch)
-    roll = headpose_pred_to_degree(roll)
+def keypoint_transformation(kp_canonical, he, idx_tensor, wo_exp=False):
+    with Timer("get yaw pitch roll", print_=PRINT_TIMER):
+        kp = kp_canonical["value"]  # (bs, k, 3)
+        yaw, pitch, roll = he["yaw"], he["pitch"], he["roll"]
 
-    if "yaw_in" in he:
-        yaw = he["yaw_in"]
-    if "pitch_in" in he:
-        pitch = he["pitch_in"]
-    if "roll_in" in he:
-        roll = he["roll_in"]
-
-    rot_mat = get_rotation_matrix(yaw, pitch, roll)  # (bs, 3, 3)
+        # with Timer("get pitch ", print_=PRINT_TIMER):
+        pitch = headpose_pred_to_degree(pitch, idx_tensor)
+        # with Timer("get yaw ", print_=PRINT_TIMER):
+        yaw = headpose_pred_to_degree(yaw, idx_tensor)
+        # with Timer("get roll", print_=PRINT_TIMER):
+        roll = headpose_pred_to_degree(roll, idx_tensor)
+        if "yaw_in" in he:
+            yaw = he["yaw_in"]
+        if "pitch_in" in he:
+            pitch = he["pitch_in"]
+        if "roll_in" in he:
+            roll = he["roll_in"]
+    with Timer("get_rotation_matrix", print_=PRINT_TIMER):
+        rot_mat = get_rotation_matrix(yaw, pitch, roll)  # (bs, 3, 3)
 
     t, exp = he["t"], he["exp"]
     if wo_exp:
         exp = exp * 0
+    with Timer(
+        "kp rotation, translation, add expression deviation", print_=PRINT_TIMER
+    ):
+        # keypoint rotation
+        kp_rotated = torch.einsum("bmp,bkp->bkm", rot_mat, kp)
 
-    # keypoint rotation
-    kp_rotated = torch.einsum("bmp,bkp->bkm", rot_mat, kp)
+        # keypoint translation
+        t[:, 0] = t[:, 0] * 0
+        t[:, 2] = t[:, 2] * 0
+        t = t.unsqueeze(1).repeat(1, kp.shape[1], 1)
+        kp_t = kp_rotated + t
 
-    # keypoint translation
-    t[:, 0] = t[:, 0] * 0
-    t[:, 2] = t[:, 2] * 0
-    t = t.unsqueeze(1).repeat(1, kp.shape[1], 1)
-    kp_t = kp_rotated + t
-
-    # add expression deviation
-    exp = exp.view(exp.shape[0], -1, 3)
-    kp_transformed = kp_t + exp
+        # add expression deviation
+        exp = exp.view(exp.shape[0], -1, 3)
+        kp_transformed = kp_t + exp
 
     return {"value": kp_transformed}
 
@@ -164,15 +172,22 @@ def make_animation(
 ):
     with torch.no_grad():
         predictions = []
-        with Timer("kp source", print_=PRINT_TIMER):
+        with Timer("source kp detector", print_=PRINT_TIMER):
             kp_canonical = kp_detector(source_image)
+        with Timer("source mapping", print_=PRINT_TIMER):
             he_source = mapping(source_semantics)
-            kp_source = keypoint_transformation(kp_canonical, he_source)
-
+        idx_tensor = [idx for idx in range(66)]
+        idx_tensor = (
+            torch.FloatTensor(idx_tensor)
+            .type_as(he_source["yaw"])
+            .to(he_source["yaw"].device)
+        )
+        with Timer("source kp transform", print_=PRINT_TIMER):
+            kp_source = keypoint_transformation(kp_canonical, he_source, idx_tensor)
         for frame_idx in tqdm(range(target_semantics.shape[1]), "Face Renderer:"):
             # still check the dimension
             # print(target_semantics.shape, source_semantics.shape)
-            with Timer("kp driving", print_=PRINT_TIMER):
+            with Timer("target mapping", print_=PRINT_TIMER):
                 target_semantics_frame = target_semantics[:, frame_idx]
                 he_driving = mapping(target_semantics_frame)
                 if yaw_c_seq is not None:
@@ -181,11 +196,11 @@ def make_animation(
                     he_driving["pitch_in"] = pitch_c_seq[:, frame_idx]
                 if roll_c_seq is not None:
                     he_driving["roll_in"] = roll_c_seq[:, frame_idx]
-
-                kp_driving = keypoint_transformation(kp_canonical, he_driving)
-
+            with Timer("target kp transform", print_=PRINT_TIMER):
+                kp_driving = keypoint_transformation(
+                    kp_canonical, he_driving, idx_tensor
+                )
                 kp_norm = kp_driving
-
             with Timer("OcclusionAwareSPADEGenerator", print_=PRINT_TIMER):
                 out = generator(source_image, kp_source=kp_source, kp_driving=kp_norm)
             """

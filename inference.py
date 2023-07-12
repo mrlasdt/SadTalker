@@ -12,8 +12,9 @@ from src.generate_batch import get_data
 from src.generate_facerender_batch import get_facerender_data
 from src.utils.init_path import init_path
 from src.utils.timer import Timer
-#from src.face3d.visualize import gen_composed_video
-PRINT_TIMER = True
+
+# from src.face3d.visualize import gen_composed_video
+PRINT_TIMER = False
 
 
 def main(args):
@@ -155,9 +156,8 @@ def main(args):
         with Timer("shutil", print_=PRINT_TIMER):
             shutil.move(result, save_dir + ".mp4")
             print("The generated video is named:", save_dir + ".mp4")
-
-        if not args.verbose:
-            shutil.rmtree(save_dir)
+            if not args.verbose:
+                shutil.rmtree(save_dir)
 
 
 if __name__ == "__main__":
