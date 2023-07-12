@@ -3,7 +3,6 @@ batch processing (split video then merge)
 eliminate duplicate video saving
 image size handling
 lower fps then fill using DAIN
-
 optimize where not using CUDA
 
 why video input accepted?

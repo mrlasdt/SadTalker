@@ -2,11 +2,7 @@ from scipy.spatial import ConvexHull
 import torch
 import torch.nn.functional as F
 import numpy as np
-from tqdm import tqdm
-from src.utils.timer import Timer
-
-PRINT_TIMER = False
-
+from tqdm import tqdm 
 
 def normalize_kp(
     kp_source,
