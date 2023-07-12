@@ -3,7 +3,7 @@ audio="examples/Buddhism/Buddhism_Domi.mp3"
 output_dir="examples/Buddhism/output"
 ref_video="examples/Buddhism/WDA_KatieHill_000.mp4"
 
-cmd="python3.8 inference.py --driven_audio $audio
+cmd="python inference.py --driven_audio $audio
            --source_image $img
            --result_dir $output_dir 
            --still
