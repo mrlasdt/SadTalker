@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from src.utils.timer import Timer
 
-PRINT_TIMER = True
+PRINT_TIMER = False
 
 
 def normalize_kp(
@@ -114,6 +114,7 @@ def get_rotation_matrix(yaw, pitch, roll):
     return rot_mat
 
 
+@torch.compile()
 def keypoint_transformation(kp_canonical, he, idx_tensor, wo_exp=False):
     with Timer("get yaw pitch roll", print_=PRINT_TIMER):
         kp = kp_canonical["value"]  # (bs, k, 3)
@@ -203,6 +204,13 @@ def make_animation(
                 kp_norm = kp_driving
             with Timer("OcclusionAwareSPADEGenerator", print_=PRINT_TIMER):
                 out = generator(source_image, kp_source=kp_source, kp_driving=kp_norm)
+                # print(
+                #     source_image.shape, kp_source["value"].shape, kp_norm["value"].shape
+                # )
+                if isinstance(generator, torch._dynamo.OptimizedModule):
+                    for k, v in out.items():
+                        # out[k] = v.detach() #detach prevent overwriting https://github.com/pytorch/pytorch/issues/104435
+                        out[k] = v + 0
             """
             source_image_new = out['prediction'].squeeze(1)
             kp_canonical_new =  kp_detector(source_image_new)

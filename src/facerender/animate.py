@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 import imageio
 import torch
 import torchvision
-
+import time
 
 from src.facerender.modules.keypoint_detector import HEEstimator, KPDetector
 from src.facerender.modules.mapping import MappingNet
@@ -48,6 +48,7 @@ class AnimateFromCoeff:
             **config["model_params"]["generator_params"],
             **config["model_params"]["common_params"],
         )
+
         kp_extractor = KPDetector(
             **config["model_params"]["kp_detector_params"],
             **config["model_params"]["common_params"],
@@ -79,6 +80,8 @@ class AnimateFromCoeff:
                     generator=generator,
                     he_estimator=None,
                 )
+                # compile and warmup a few step -> should saved compiled weight?
+                generator = torch.compile(generator, mode="max-autotune")
             else:
                 self.load_cpk_facevid2vid(
                     sadtalker_path["free_view_checkpoint"],
@@ -128,6 +131,7 @@ class AnimateFromCoeff:
                 if "generator" in k:
                     x_generator[k.replace("generator.", "")] = v
             generator.load_state_dict(x_generator)
+
         if kp_detector is not None:
             x_generator = {}
             for k, v in checkpoint.items():

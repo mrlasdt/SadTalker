@@ -49,10 +49,60 @@ def main(args):
     audio_to_coeff = Audio2Coeff(sadtalker_paths, device)
 
     animate_from_coeff = AnimateFromCoeff(sadtalker_paths, device)
-    with Timer("Total run", print_=PRINT_TIMER):
+    first_frame_dir = os.path.join(save_dir, "first_frame_dir")
+    os.makedirs(first_frame_dir, exist_ok=True)
+    with Timer("Warming up", print_=True):
+        for i in range(5):
+            first_coeff_path, crop_pic_path, crop_info = preprocess_model.generate(
+                pic_path,
+                first_frame_dir,
+                args.preprocess,
+                source_image_flag=True,
+                pic_size=args.size,
+            )
+            # kp_warmup = {"value": torch.rand((2, 15, 3)).to(device)}
+            # img_warmup = torch.rand((2, 3, 256, 256)).to(device)
+            # generator(img_warmup, kp_warmup, kp_warmup)
+            batch = get_data(
+                first_coeff_path,
+                audio_path,
+                device,
+                None,
+                still=args.still,
+            )
+            coeff_path = audio_to_coeff.generate(
+                batch, save_dir, pose_style, None
+            )
+            data = get_facerender_data(
+                coeff_path,
+                crop_pic_path,
+                first_coeff_path,
+                audio_path,
+                batch_size,
+                input_yaw_list,
+                input_pitch_list,
+                input_roll_list,
+                expression_scale=args.expression_scale,
+                still_mode=args.still,
+                preprocess=args.preprocess,
+                size=args.size,
+            )
+            result = animate_from_coeff.generate(
+                data,
+                save_dir,
+                pic_path,
+                crop_info,
+                enhancer=args.enhancer,
+                background_enhancer=args.background_enhancer,
+                preprocess=args.preprocess,
+                img_size=args.size,
+            )
+
+            time.sleep(1)
+
+    with Timer("Total run", print_=True):
         # crop image and extract 3dmm from image
-        first_frame_dir = os.path.join(save_dir, "first_frame_dir")
-        os.makedirs(first_frame_dir, exist_ok=True)
+
         print("3DMM Extraction for source image")
         with Timer("crop and extract"):
             first_coeff_path, crop_pic_path, crop_info = preprocess_model.generate(
