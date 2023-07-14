@@ -1,5 +1,6 @@
 from glob import glob
 import shutil
+from sqlite3 import NotSupportedError
 import torch
 from time import strftime
 import os, sys, time
@@ -15,7 +16,8 @@ from src.utils.timer import Timer
 
 # from src.face3d.visualize import gen_composed_video
 PRINT_TIMER = False
-
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
 
 def main(args):
     # torch.backends.cudnn.enabled = False
@@ -33,6 +35,10 @@ def main(args):
     ref_eyeblink = args.ref_eyeblink
     ref_pose = args.ref_pose
 
+
+    if batch_size !=1:
+        raise NotSupportedError("Use batch_size=1 to support batch inference in make_animation")
+    
     current_root_path = os.path.split(sys.argv[0])[0]
 
     sadtalker_paths = init_path(
@@ -52,7 +58,7 @@ def main(args):
     first_frame_dir = os.path.join(save_dir, "first_frame_dir")
     os.makedirs(first_frame_dir, exist_ok=True)
     with Timer("Warming up", print_=True):
-        for i in range(5):
+        for i in range(3): #TODO: fix this hard code
             first_coeff_path, crop_pic_path, crop_info = preprocess_model.generate(
                 pic_path,
                 first_frame_dir,
@@ -70,9 +76,7 @@ def main(args):
                 None,
                 still=args.still,
             )
-            coeff_path = audio_to_coeff.generate(
-                batch, save_dir, pose_style, None
-            )
+            coeff_path = audio_to_coeff.generate(batch, save_dir, pose_style, None)
             data = get_facerender_data(
                 coeff_path,
                 crop_pic_path,
@@ -238,7 +242,7 @@ if __name__ == "__main__":
         "--pose_style", type=int, default=0, help="input pose style from [0, 46)"
     )
     parser.add_argument(
-        "--batch_size", type=int, default=2, help="the batch size of facerender"
+        "--batch_size", type=int, default=1, help="the batch size of facerender"
     )
     parser.add_argument(
         "--size", type=int, default=256, help="the image size of the facerender"

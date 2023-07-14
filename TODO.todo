@@ -8,3 +8,5 @@ optimize where not using CUDA
 why video input accepted?
 
 no batch size in make animation?
+
+TODO: lower FPS and use DAIN to estimate missing frames -> save 50% time if using FPS=12 instead 24?

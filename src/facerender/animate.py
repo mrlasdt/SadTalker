@@ -36,7 +36,7 @@ try:
 except:
     in_webui = False
 
-PRINT_TIMER = False
+PRINT_TIMER = True
 
 
 class AnimateFromCoeff:
@@ -81,7 +81,7 @@ class AnimateFromCoeff:
                     he_estimator=None,
                 )
                 # compile and warmup a few step -> should saved compiled weight?
-                generator = torch.compile(generator, mode="max-autotune")
+                generator = torch.compile(generator)#, mode="max-autotune")
             else:
                 self.load_cpk_facevid2vid(
                     sadtalker_path["free_view_checkpoint"],
@@ -291,7 +291,7 @@ class AnimateFromCoeff:
                 for result_i in result
             ]
 
-        with Timer("save video and audio", print_=PRINT_TIMER):
+        with Timer("save tmp video and audio", print_=PRINT_TIMER):
             video_name = x["video_name"] + ".mp4"
             path = os.path.join(video_save_dir, "temp_" + video_name)
 

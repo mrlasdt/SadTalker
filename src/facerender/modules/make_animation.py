@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from src.utils.timer import Timer
 
-PRINT_TIMER = False
+PRINT_TIMER = True
 
 
 def normalize_kp(
@@ -172,7 +172,6 @@ def make_animation(
     use_half=False,
 ):
     with torch.no_grad():
-        predictions = []
         with Timer("source kp detector", print_=PRINT_TIMER):
             kp_canonical = kp_detector(source_image)
         with Timer("source mapping", print_=PRINT_TIMER):
@@ -185,6 +184,11 @@ def make_animation(
         )
         with Timer("source kp transform", print_=PRINT_TIMER):
             kp_source = keypoint_transformation(kp_canonical, he_source, idx_tensor)
+        batch_size = 32 #TODO: fix this hard code
+        source_image_batch = source_image.repeat(batch_size, 1, 1, 1)
+        kp_source_batch = {"value": kp_source["value"].repeat(batch_size, 1, 1)}
+        kp_norm_batch = {"value": []}
+        predictions = []
         for frame_idx in tqdm(range(target_semantics.shape[1]), "Face Renderer:"):
             # still check the dimension
             # print(target_semantics.shape, source_semantics.shape)
@@ -202,25 +206,41 @@ def make_animation(
                     kp_canonical, he_driving, idx_tensor
                 )
                 kp_norm = kp_driving
+            kp_norm_batch["value"].append(kp_norm["value"])
             with Timer("OcclusionAwareSPADEGenerator", print_=PRINT_TIMER):
-                out = generator(source_image, kp_source=kp_source, kp_driving=kp_norm)
+                # out = generator(source_image, kp_source=kp_source, kp_driving=kp_norm)
                 # print(
                 #     source_image.shape, kp_source["value"].shape, kp_norm["value"].shape
                 # )
-                if isinstance(generator, torch._dynamo.OptimizedModule):
-                    for k, v in out.items():
-                        # out[k] = v.detach() #detach prevent overwriting https://github.com/pytorch/pytorch/issues/104435
-                        out[k] = v + 0
-            """
-            source_image_new = out['prediction'].squeeze(1)
-            kp_canonical_new =  kp_detector(source_image_new)
-            he_source_new = he_estimator(source_image_new) 
-            kp_source_new = keypoint_transformation(kp_canonical_new, he_source_new, wo_exp=True)
-            kp_driving_new = keypoint_transformation(kp_canonical_new, he_driving, wo_exp=True)
-            out = generator(source_image_new, kp_source=kp_source_new, kp_driving=kp_driving_new)
-            """
-            predictions.append(out["prediction"])
-        predictions_ts = torch.stack(predictions, dim=1)
+                # if isinstance(generator, torch._dynamo.OptimizedModule):
+                #     for k, v in out.items():
+                #         # out[k] = v.detach() #detach prevent overwriting https://github.com/pytorch/pytorch/issues/104435
+                #         out[k] = v + 0
+                """
+                source_image_new = out['prediction'].squeeze(1)
+                kp_canonical_new =  kp_detector(source_image_new)
+                he_source_new = he_estimator(source_image_new) 
+                kp_source_new = keypoint_transformation(kp_canonical_new, he_source_new, wo_exp=True)
+                kp_driving_new = keypoint_transformation(kp_canonical_new, he_driving, wo_exp=True)
+                out = generator(source_image_new, kp_source=kp_source_new, kp_driving=kp_driving_new)
+                """
+                if (frame_idx + 1) % batch_size == 0 or (frame_idx +1) == target_semantics.shape[1]:
+                    kp_norm_batch["value"] = torch.stack(kp_norm_batch["value"], dim=1).squeeze(0)
+                    if kp_norm_batch["value"].shape[0] != batch_size: #last epoch
+                        kp_source_batch["value"] = kp_source_batch["value"][:kp_norm_batch["value"].shape[0],:,:]
+                        source_image_batch = source_image_batch[:kp_norm_batch["value"].shape[0],:,:,:]
+                    out = generator(source_image_batch, kp_source=kp_source_batch, kp_driving=kp_norm_batch)
+                    if isinstance(generator, torch._dynamo.OptimizedModule):
+                        for k, v in out.items():
+                            # out[k] = v.detach() #detach prevent overwriting https://github.com/pytorch/pytorch/issues/104435
+                            out[k] = v + 0
+                    predictions.append(out["prediction"])
+                    kp_norm_batch["value"] = [] #reset
+        # predictions_ts = torch.stack(predictions, dim=1)
+        predictions_ts = torch.cat(predictions, dim=0).unsqueeze(0)
+        
+        
+        # predictions_ts = out["prediction"].unsqueeze(0)
     return predictions_ts
 
 
