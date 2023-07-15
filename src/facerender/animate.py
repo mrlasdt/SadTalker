@@ -36,7 +36,7 @@ try:
 except:
     in_webui = False
 
-PRINT_TIMER = True
+PRINT_TIMER = False
 
 
 class AnimateFromCoeff:

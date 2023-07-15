@@ -9,15 +9,15 @@ import platform
 import json
 
 python = sys.executable
-git = os.environ.get('GIT', "git")
-index_url = os.environ.get('INDEX_URL', "")
+git = os.environ.get("GIT", "git")
+index_url = os.environ.get("INDEX_URL", "")
 stored_commit_hash = None
 skip_install = False
 dir_repos = "repositories"
 script_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
-if 'GRADIO_ANALYTICS_ENABLED' not in os.environ:
-    os.environ['GRADIO_ANALYTICS_ENABLED'] = 'False'
+if "GRADIO_ANALYTICS_ENABLED" not in os.environ:
+    os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
 
 
 def check_python_version():
@@ -32,8 +32,8 @@ def check_python_version():
         supported_minors = [7, 8, 9, 10, 11]
 
     if not (major == 3 and minor in supported_minors):
-
-        raise (f"""
+        raise (
+            f"""
 INCOMPATIBLE PYTHON VERSION
 This program is tested with 3.10.6 Python, but you have {major}.{minor}.{micro}.
 If you encounter an error with "RuntimeError: Couldn't install torch." message,
@@ -43,7 +43,8 @@ and delete current Python and "venv" folder in WebUI's directory.
 You can download 3.10 Python from here: https://www.python.org/downloads/release/python-3109/
 {"Alternatively, use a binary release of WebUI: https://github.com/AUTOMATIC1111/stable-diffusion-webui/releases" if is_windows else ""}
 Use --skip-python-version-check to suppress this warning.
-""")
+"""
+        )
 
 
 def commit_hash():
@@ -65,18 +66,27 @@ def run(command, desc=None, errdesc=None, custom_env=None, live=False):
         print(desc)
 
     if live:
-        result = subprocess.run(command, shell=True, env=os.environ if custom_env is None else custom_env)
+        result = subprocess.run(
+            command, shell=True, env=os.environ if custom_env is None else custom_env
+        )
         if result.returncode != 0:
-            raise RuntimeError(f"""{errdesc or 'Error running command'}.
+            raise RuntimeError(
+                f"""{errdesc or 'Error running command'}.
 Command: {command}
-Error code: {result.returncode}""")
+Error code: {result.returncode}"""
+            )
 
         return ""
 
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=os.environ if custom_env is None else custom_env)
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+        env=os.environ if custom_env is None else custom_env,
+    )
 
     if result.returncode != 0:
-
         message = f"""{errdesc or 'Error running command'}.
 Command: {command}
 Error code: {result.returncode}
@@ -89,7 +99,9 @@ stderr: {result.stderr.decode(encoding="utf8", errors="ignore") if len(result.st
 
 
 def check_run(command):
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    result = subprocess.run(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
+    )
     return result.returncode == 0
 
 
@@ -114,8 +126,12 @@ def run_pip(args, desc=None):
     if skip_install:
         return
 
-    index_url_line = f' --index-url {index_url}' if index_url != '' else ''
-    return run(f'"{python}" -m pip {args} --prefer-binary{index_url_line}', desc=f"Installing {desc}", errdesc=f"Couldn't install {desc}")
+    index_url_line = f" --index-url {index_url}" if index_url != "" else ""
+    return run(
+        f'"{python}" -m pip {args} --prefer-binary{index_url_line}',
+        desc=f"Installing {desc}",
+        errdesc=f"Couldn't install {desc}",
+    )
 
 
 def check_run_python(code):
@@ -129,28 +145,54 @@ def git_clone(url, dir, name, commithash=None):
         if commithash is None:
             return
 
-        current_hash = run(f'"{git}" -C "{dir}" rev-parse HEAD', None, f"Couldn't determine {name}'s hash: {commithash}").strip()
+        current_hash = run(
+            f'"{git}" -C "{dir}" rev-parse HEAD',
+            None,
+            f"Couldn't determine {name}'s hash: {commithash}",
+        ).strip()
         if current_hash == commithash:
             return
 
-        run(f'"{git}" -C "{dir}" fetch', f"Fetching updates for {name}...", f"Couldn't fetch {name}")
-        run(f'"{git}" -C "{dir}" checkout {commithash}', f"Checking out commit for {name} with hash: {commithash}...", f"Couldn't checkout commit {commithash} for {name}")
+        run(
+            f'"{git}" -C "{dir}" fetch',
+            f"Fetching updates for {name}...",
+            f"Couldn't fetch {name}",
+        )
+        run(
+            f'"{git}" -C "{dir}" checkout {commithash}',
+            f"Checking out commit for {name} with hash: {commithash}...",
+            f"Couldn't checkout commit {commithash} for {name}",
+        )
         return
 
-    run(f'"{git}" clone "{url}" "{dir}"', f"Cloning {name} into {dir}...", f"Couldn't clone {name}")
+    run(
+        f'"{git}" clone "{url}" "{dir}"',
+        f"Cloning {name} into {dir}...",
+        f"Couldn't clone {name}",
+    )
 
     if commithash is not None:
-        run(f'"{git}" -C "{dir}" checkout {commithash}', None, "Couldn't checkout {name}'s hash: {commithash}")
+        run(
+            f'"{git}" -C "{dir}" checkout {commithash}',
+            None,
+            "Couldn't checkout {name}'s hash: {commithash}",
+        )
 
 
 def git_pull_recursive(dir):
     for subdir, _, _ in os.walk(dir):
-        if os.path.exists(os.path.join(subdir, '.git')):
+        if os.path.exists(os.path.join(subdir, ".git")):
             try:
-                output = subprocess.check_output([git, '-C', subdir, 'pull', '--autostash'])
-                print(f"Pulled changes for repository in '{subdir}':\n{output.decode('utf-8').strip()}\n")
+                output = subprocess.check_output(
+                    [git, "-C", subdir, "pull", "--autostash"]
+                )
+                print(
+                    f"Pulled changes for repository in '{subdir}':\n{output.decode('utf-8').strip()}\n"
+                )
             except subprocess.CalledProcessError as e:
-                print(f"Couldn't perform 'git pull' on repository in '{subdir}':\n{e.output.decode('utf-8').strip()}\n")
+                print(
+                    f"Couldn't perform 'git pull' on repository in '{subdir}':\n{e.output.decode('utf-8').strip()}\n"
+                )
 
 
 def run_extension_installer(extension_dir):
@@ -160,9 +202,15 @@ def run_extension_installer(extension_dir):
 
     try:
         env = os.environ.copy()
-        env['PYTHONPATH'] = os.path.abspath(".")
+        env["PYTHONPATH"] = os.path.abspath(".")
 
-        print(run(f'"{python}" "{path_installer}"', errdesc=f"Error running install.py for extension {extension_dir}", custom_env=env))
+        print(
+            run(
+                f'"{python}" "{path_installer}"',
+                errdesc=f"Error running install.py for extension {extension_dir}",
+                custom_env=env,
+            )
+        )
     except Exception as e:
         print(e, file=sys.stderr)
 
@@ -170,35 +218,46 @@ def run_extension_installer(extension_dir):
 def prepare_environment():
     global skip_install
 
-    torch_command = os.environ.get('TORCH_COMMAND', "pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113")
+    torch_command = os.environ.get(
+        "TORCH_COMMAND",
+        "pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113",
+    )
 
-    ## check windows 
-    if sys.platform != 'win32':
-        requirements_file = os.environ.get('REQS_FILE', "req.txt")
+    ## check windows
+    if sys.platform != "win32":
+        requirements_file = os.environ.get("REQS_FILE", "req.txt")
     else:
-        requirements_file = os.environ.get('REQS_FILE', "requirements.txt")
+        requirements_file = os.environ.get("REQS_FILE", "requirements.txt")
 
     commit = commit_hash()
 
     print(f"Python {sys.version}")
     print(f"Commit hash: {commit}")
 
-    #if not is_installed("torch") or not is_installed("torchvision"):
+    # if not is_installed("torch") or not is_installed("torchvision"):
     #    run(f'"{python}" -m {torch_command}', "Installing torch and torchvision", "Couldn't install torch", live=True)
 
-    run_pip(f"install -r \"{requirements_file}\"", "requirements for SadTalker WebUI (may take longer time in first time)")
+    run_pip(
+        f'install -r "{requirements_file}"',
+        "requirements for SadTalker WebUI (may take longer time in first time)",
+    )
 
-    if sys.platform != 'win32' and not is_installed('tts'):
-        run_pip(f"install TTS", "install TTS individually in SadTalker, which might not work on windows.")
+    if sys.platform != "win32" and not is_installed("tts"):
+        run_pip(
+            f"install TTS",
+            "install TTS individually in SadTalker, which might not work on windows.",
+        )
 
 
 def start():
     print(f"Launching SadTalker Web UI")
     from app_sadtalker import sadtalker_demo
+
     demo = sadtalker_demo()
     demo.queue()
     demo.launch()
 
+
 if __name__ == "__main__":
-    prepare_environment()
+    # prepare_environment()
     start()
