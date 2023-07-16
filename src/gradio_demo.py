@@ -11,6 +11,27 @@ from src.utils.timer import Timer
 from pydub import AudioSegment
 import gc
 
+# import multiprocessing
+# import threading
+# from stream.inference_streaming_pipeline_dummy import (
+#     audio_input_thread_handler,
+#     audio_thread_handler,
+#     write_video_frame,
+#     write_audio_frame,
+#     get_video_info,
+#     start_ffmpeg_process2,
+#     fps,
+#     output_port,
+#     video_output_to,
+#     video_output_path,
+#     BYTE_WIDTH,
+#     NUM_AUDIO_SAMPLES_PER_STEP,
+#     audio_sr,
+# )
+# import logging
+
+# logger = logging.getLogger(__name__)
+
 
 def mp3_to_wav(mp3_filename, wav_filename, frame_rate):
     mp3_file = AudioSegment.from_file(file=mp3_filename)
@@ -89,6 +110,7 @@ class SadTalker:
         use_blink=True,
         result_dir="./results/",
         is_warming_up=False,
+        is_stream=False,
     ):
         # with Timer("Inference time"):
         print("[INFO]: Inferencing...")
@@ -220,7 +242,7 @@ class SadTalker:
             size=size,
             expression_scale=exp_scale,
         )
-        return_path = animate_from_coeff.generate(
+        return_path_or_frames = animate_from_coeff.generate(
             data,
             save_dir,
             pic_path,
@@ -229,6 +251,8 @@ class SadTalker:
             preprocess=preprocess,
             img_size=size,
         )
+        if is_stream:
+            return return_path_or_frames
         video_name = data["video_name"]
         print(f"The generated video is named {video_name} in {save_dir}")
         if is_warming_up:
@@ -237,7 +261,6 @@ class SadTalker:
         # del self.preprocess_model
         # del self.audio_to_coeff
         # del self.animate_from_coeff
-
         if torch.cuda.is_available():
             print("[INFO]: Clearing cache...")
 
@@ -245,5 +268,183 @@ class SadTalker:
             torch.cuda.synchronize()
 
         gc.collect()
+        return return_path_or_frames
 
-        return return_path
+    # def video_inference(
+    #     self,
+    #     fifo_filename_video,
+    #     audio_inqueue,
+    #     BYTE_WIDTH,
+    #     NUM_AUDIO_SAMPLES_PER_STEP,
+    #     audio_sr,
+    #     source_image,
+    #     preprocess="crop",
+    #     still_mode=False,
+    #     use_enhancer=False,
+    #     size=256,
+    #     pose_style=0,
+    #     exp_scale=1.0,
+    #     result_dir="./results/",
+    #     is_warming_up=False,
+    # ):
+    #     # Setup video streaming pipe:
+    #     fifo_video_out = open(fifo_filename_video, "wb")
+    #     frames_done = 0
+    #     audio_received = 0.0
+    #     audio_data = audio_inqueue.get()
+    #     while len(audio_data) == NUM_AUDIO_SAMPLES_PER_STEP * BYTE_WIDTH:
+    #         # break when exactly desired length not received (so very last packet might be lost)
+    #         audio_received += NUM_AUDIO_SAMPLES_PER_STEP / audio_sr
+    #         tmp_audio_path = "/tmp/audio_sadtalker.wav"
+    #         write_audio_frame(tmp_audio_path, audio_data)
+
+    #         frames = self.test(
+    #             source_image,
+    #             tmp_audio_path,
+    #             preprocess,
+    #             still_mode,
+    #             use_enhancer,
+    #             size,
+    #             pose_style,
+    #             exp_scale,
+    #             result_dir,
+    #             is_warming_up,
+    #             is_stream=True,
+    #         )
+
+    #         for frame in frames:
+    #             frames_done += 1
+    #             # write to pipe
+    #             write_video_frame(fifo_video_out, frame)
+
+    #         print(
+    #             "Generated",
+    #             frames_done,
+    #             "frames from",
+    #             "{:.1f}".format(audio_received),
+    #             "s of received audio",
+    #         )
+
+    #         audio_data = audio_inqueue.get()
+
+    #         if audio_data == "BREAK":
+    #             print("=" * 50)
+    #             print("Closing Fifo Video")
+    #             print("=" * 50)
+    #             fifo_video_out.close()
+    #             break
+
+    # def stream(
+    #     self,
+    #     source_image,
+    #     driven_audio,
+    #     preprocess="crop",
+    #     still_mode=False,
+    #     use_enhancer=False,
+    #     size=256,
+    #     pose_style=0,
+    #     exp_scale=1.0,
+    #     result_dir="./results/",
+    #     is_warming_up=False,
+    # ):
+    #     """
+    #     Handles all the threads
+    #     """
+    #     width, height = get_video_info(source_image)
+
+    #     # fifo pipes (remove file name if already exists)
+    #     fifo_filename_video = "/tmp/fifovideo"
+    #     fifo_filename_audio = "/tmp/fifoaudio"
+    #     fifo_resemble_tts = "/tmp/fiforesembletts"
+
+    #     if os.path.exists(fifo_filename_video):
+    #         os.remove(fifo_filename_video)
+    #     if os.path.exists(fifo_filename_audio):
+    #         os.remove(fifo_filename_audio)
+    #     if os.path.exists(fifo_resemble_tts):
+    #         os.remove(fifo_resemble_tts)
+
+    #     os.mkfifo(fifo_filename_video)
+    #     os.mkfifo(fifo_filename_audio)
+    #     os.mkfifo(fifo_resemble_tts)
+    #     print("fifo exists now")
+
+    #     process2 = start_ffmpeg_process2(
+    #         fifo_filename_video,
+    #         fifo_filename_audio,
+    #         width,
+    #         height,
+    #         fps,
+    #         output_port,
+    #         video_output_to,
+    #         video_output_path,
+    #     )
+    #     print("Output pipe set")
+
+    #     # queues for sending audio packets from T1 (audio receiving) to T2 (audio generation) and T3
+    #     # (video generation) at unlimited capacity
+    #     audio_packet_queue_T2 = multiprocessing.Queue()
+    #     audio_packet_queue_T3 = multiprocessing.Queue()
+
+    #     # we run audio and video in separate threads otherwise the fifo opening blocks
+    #     outqueue_list = [audio_packet_queue_T2, audio_packet_queue_T3]
+
+    #     audio_input_thread = multiprocessing.Process(
+    #         target=audio_input_thread_handler,
+    #         args=(
+    #             outqueue_list,
+    #             driven_audio,
+    #             BYTE_WIDTH,
+    #             NUM_AUDIO_SAMPLES_PER_STEP,
+    #             audio_sr,
+    #         ),
+    #     )
+    #     print("T4: Audio input thread launched -- Audio Input")
+    #     video_thread = threading.Thread(
+    #         target=self.video_inference,
+    #         args=(
+    #             fifo_filename_video,
+    #             audio_packet_queue_T2,
+    #             BYTE_WIDTH,
+    #             NUM_AUDIO_SAMPLES_PER_STEP,
+    #             audio_sr,
+    #             source_image,
+    #             preprocess,
+    #             still_mode,
+    #             use_enhancer,
+    #             size,
+    #             pose_style,
+    #             exp_scale,
+    #             result_dir,
+    #             is_warming_up,
+    #         ),
+    #     )
+    #     print("T2: Video thread launched")
+    #     audio_thread = multiprocessing.Process(
+    #         target=audio_thread_handler,
+    #         args=(fifo_filename_audio, audio_packet_queue_T3),
+    #     )
+    #     print("T3: Audio thread launched")
+
+    #     audio_input_thread.start()
+    #     video_thread.start()
+    #     audio_thread.start()
+    #     audio_input_thread.join()
+    #     video_thread.join()
+    #     audio_thread.join()
+
+    #     print("Waiting for ffmpeg process2")
+    #     process2.wait()
+
+    #     os.remove(fifo_filename_video)
+    #     os.remove(fifo_filename_audio)
+    #     os.remove(fifo_resemble_tts)
+
+    #     if torch.cuda.is_available():
+    #         print("[INFO]: Clearing cache...")
+
+    #         torch.cuda.empty_cache()
+    #         torch.cuda.synchronize()
+
+    #     gc.collect()
+    #     print("Done")
