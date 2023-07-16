@@ -184,7 +184,7 @@ def make_animation(
         )
         with Timer("source kp transform", print_=PRINT_TIMER):
             kp_source = keypoint_transformation(kp_canonical, he_source, idx_tensor)
-        batch_size = 32 #TODO: fix this hard code
+        batch_size = 128 #TODO: fix this hard code
         source_image_batch = source_image.repeat(batch_size, 1, 1, 1)
         kp_source_batch = {"value": kp_source["value"].repeat(batch_size, 1, 1)}
         kp_norm_batch = {"value": []}

@@ -55,7 +55,7 @@ def sadtalker_demo(checkpoint_path='checkpoints', config_path='src/config', warp
             with gr.Column(variant='panel'): 
                 with gr.Tabs(elem_id="sadtalker_checkbox"):
                     with gr.TabItem('Settings'):
-                        # gr.Markdown("need help? please visit our [best practice page](https://github.com/OpenTalker/SadTalker/blob/main/docs/best_practice.md) for more detials")
+                        gr.Markdown("need help? please visit our [best practice page](https://github.com/OpenTalker/SadTalker/blob/main/docs/best_practice.md) for more detials")
                         with gr.Column(variant='panel'):
                             # width = gr.Slider(minimum=64, elem_id="img2img_width", maximum=2048, step=8, label="Manually Crop Width", value=512) # img2img_width
                             # height = gr.Slider(minimum=64, elem_id="img2img_height", maximum=2048, step=8, label="Manually Crop Height", value=512) # img2img_width
@@ -64,11 +64,11 @@ def sadtalker_demo(checkpoint_path='checkpoints', config_path='src/config', warp
                             preprocess_type = gr.Radio(['crop', 'resize','full', 'extcrop', 'extfull'], value='crop', label='preprocess', info="How to handle input image?")
                             is_still_mode = gr.Checkbox(label="Still Mode (fewer hand motion, works with preprocess `full`)")
                             # batch_size = gr.Slider(label="batch size in generation", step=1, maximum=10, value=2)
-                            batch_size=1
+                            # batch_size=1
                             enhancer = gr.Checkbox(label="GFPGAN as Face enhancer")
-
-                with gr.Tabs(elem_id="sadtalker_genearted"):
-                        submit = gr.Button('Generate', elem_id="sadtalker_generate", variant='primary')
+                            submit = gr.Button('Generate', elem_id="sadtalker_generate", variant='primary')
+                            
+                with gr.Tabs(elem_id="sadtalker_generated"):
                         gen_video = gr.Video(label="Generated video", format="mp4").style(width=256)
 
         if warpfn:
@@ -79,7 +79,6 @@ def sadtalker_demo(checkpoint_path='checkpoints', config_path='src/config', warp
                                 preprocess_type,
                                 is_still_mode,
                                 enhancer,
-                                batch_size,                            
                                 size_of_image,
                                 pose_style
                                 ], 
@@ -93,7 +92,6 @@ def sadtalker_demo(checkpoint_path='checkpoints', config_path='src/config', warp
                                 preprocess_type,
                                 is_still_mode,
                                 enhancer,
-                                batch_size,                            
                                 size_of_image,
                                 pose_style
                                 ], 
@@ -108,5 +106,4 @@ if __name__ == "__main__":
     demo = sadtalker_demo()
     demo.queue()
     demo.launch()
-
 

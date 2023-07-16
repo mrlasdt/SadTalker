@@ -12,11 +12,10 @@ cmd="python inference.py --driven_audio $audio
         #   --enhancer gfpgan"
 
 
-# cmd="python inference.py --driven_audio $audio
-#            --source_image $img
-#            --result_dir $output_dir
-#            --preprocess crop
-#            --batch_size 1"
-
+cmd="python inference.py --driven_audio $audio
+           --source_image $img
+           --result_dir $output_dir
+           --preprocess crop"
+           
 echo $cmd
 exec $cmd

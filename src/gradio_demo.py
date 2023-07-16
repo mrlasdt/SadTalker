@@ -37,23 +37,24 @@ class SadTalker():
         
     def init(self):
         for size in [256, 512]:
-            for preprocess in ["crop", "full"]:
-                self.sadtalker_paths = init_path(self.checkpoint_path, self.config_path, size, False, preprocess)
-                # print(self.sadtalker_paths)            
-                audio_to_coeff = Audio2Coeff(self.sadtalker_paths, self.device)
-                preprocess_model = CropAndExtract(self.sadtalker_paths, self.device)
-                animate_from_coeff = AnimateFromCoeff(self.sadtalker_paths, self.device)
-                self.dcfg_models[str(size)+preprocess] = (audio_to_coeff, preprocess_model, animate_from_coeff)
-                
+            self.sadtalker_paths = init_path(self.checkpoint_path, self.config_path, size, False, preprocess="crop")
+            audio_to_coeff = Audio2Coeff(self.sadtalker_paths, self.device)
+            preprocess_model = CropAndExtract(self.sadtalker_paths, self.device)
+            self.dcfg_models[size] = (audio_to_coeff, preprocess_model)
+        
+        for preprocess in ["crop", "full"]:
+            self.sadtalker_paths = init_path(self.checkpoint_path, self.config_path, size=256, old_version=False, preprocess=preprocess)
+            animate_from_coeff = AnimateFromCoeff(self.sadtalker_paths, self.device)
+            self.dcfg_models[preprocess] = animate_from_coeff
+
     def warm_up(self, warm_up_steps=3, tmp_save_path = "./results/tmp/"):
         for _ in range(warm_up_steps):
-            for size in [256, 512]:
-                for preprocess in ["crop", "full"]:
-                    self.test(source_image="examples/source_image/art_2.png", driven_audio="examples/driven_audio/RD_Radio31_000.wav", size=size, preprocess=preprocess, result_dir=tmp_save_path, is_warming_up=True)
-        os.remove(tmp_save_path)
+            for size, preprocess in zip([256, 512], ["crop", "full"]):
+                self.test(source_image="examples/source_image/art_2.png", driven_audio="examples/driven_audio/RD_Radio31_000.wav", size=size, preprocess=preprocess, result_dir=tmp_save_path, is_warming_up=True)
+        shutil.rmtree(tmp_save_path)
 
     def test(self, source_image, driven_audio, preprocess='crop', 
-        still_mode=False,  use_enhancer=False, batch_size=1, size=256, 
+        still_mode=False,  use_enhancer=False, size=256, 
         pose_style = 0, exp_scale=1.0, 
         use_ref_video = False,
         ref_video = None,
@@ -62,8 +63,9 @@ class SadTalker():
         length_of_audio = 0, use_blink=True,
         result_dir='./results/',
         is_warming_up=False):
-        
-        audio_to_coeff, preprocess_model, animate_from_coeff = self.dcfg_models[str(size)+preprocess]
+        batch_size=1 #TODO: fix this hardcode
+        audio_to_coeff, preprocess_model =self.dcfg_models[size]
+        animate_from_coeff = self.dcfg_models[preprocess]
         time_tag = str(uuid.uuid4())
         save_dir = os.path.join(result_dir, time_tag)
         os.makedirs(save_dir, exist_ok=True)
