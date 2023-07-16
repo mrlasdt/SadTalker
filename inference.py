@@ -166,17 +166,17 @@ def main(args):
                 batch, save_dir, pose_style, ref_pose_coeff_path
             )
 
-        # 3dface render
-        with Timer("3dface render", print_=PRINT_TIMER):
-            if args.face3dvis:
-                gen_composed_video(
-                    args,
-                    device,
-                    first_coeff_path,
-                    coeff_path,
-                    audio_path,
-                    os.path.join(save_dir, "3dface.mp4"),
-                )
+        # # 3dface render
+        # with Timer("3dface render", print_=PRINT_TIMER):
+        #     if args.face3dvis:
+        #         gen_composed_video(
+        #             args,
+        #             device,
+        #             first_coeff_path,
+        #             coeff_path,
+        #             audio_path,
+        #             os.path.join(save_dir, "3dface.mp4"),
+        #         )
 
         # coeff2video
         with Timer("coeff2video", print_=PRINT_TIMER):
